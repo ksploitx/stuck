@@ -50,3 +50,28 @@
 ### Next
 
 - Phase 3 will use the CDP-captured tool calls and task signals to generate AI postmortem reports when a task finishes or fails.
+
+## [Phase 3] - Postmortem Engine
+
+### Added
+
+- `postmortem.ts` — session-end detection via CDP `task_end` signal or idle timeout
+- SigNoz trace querying via `GET /api/v1/traces/{traceId}` to fetch full session history
+- Structured summary builder analyzing time spent (planning/editing/commands/waiting) and retry counts
+- AI report generation via configurable LLM provider (Anthropic, OpenAI, Ollama fallback)
+- Configuration settings for LLM providers (`stuck.llmProvider`, `stuck.anthropicApiKey`, `stuck.openaiApiKey`, `stuck.ollamaEndpoint`)
+- Configuration for timeouts and query endpoints (`stuck.idleTimeoutMinutes`, `stuck.signozQueryEndpoint`)
+- Dual output: saves reports to `.agent-reports/*.md` in the workspace and pushes back to SigNoz as a log event
+
+### Verify
+
+1. Run `npm run compile` — should build with zero errors.
+2. Ensure SigNoz is running locally (ports 4318 for OTLP, 3301 for query API).
+3. Open Extension Development Host (F5). Edit some files or run terminal commands to generate traces.
+4. Wait for 5 minutes of inactivity (or trigger a CDP task-end signal if running with Antigravity).
+5. A notification will appear. Check `.agent-reports/` in the root workspace folder for the generated `postmortem-*.md` file.
+6. (Optional) In SigNoz logs, check for a log containing the report attached to the trace ID.
+
+### Next
+
+- Phase 4 will introduce the interactive webview rendering for the agent panel (implementing the HTML mockups), replacing raw markdown files with a rich UI.

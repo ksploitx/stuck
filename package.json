@@ -31,6 +31,42 @@
           "type": "boolean",
           "default": true,
           "description": "Enable CDP bridge for Antigravity-specific agent instrumentation. Disable on Cursor or plain VS Code."
+        },
+        "stuck.idleTimeoutMinutes": {
+          "type": "number",
+          "default": 5,
+          "description": "Minutes of inactivity after the last captured span before triggering a postmortem report."
+        },
+        "stuck.signozQueryEndpoint": {
+          "type": "string",
+          "default": "http://localhost:3301",
+          "description": "SigNoz query-service API endpoint for retrieving trace data."
+        },
+        "stuck.llmProvider": {
+          "type": "string",
+          "enum": ["anthropic", "openai", "ollama"],
+          "default": "ollama",
+          "description": "LLM provider for postmortem report generation. Auto-detected from API key settings if not explicitly set."
+        },
+        "stuck.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key for postmortem report generation."
+        },
+        "stuck.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key for postmortem report generation."
+        },
+        "stuck.ollamaEndpoint": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama API endpoint for local LLM postmortem report generation."
+        },
+        "stuck.ollamaModel": {
+          "type": "string",
+          "default": "llama3",
+          "description": "Ollama model name for postmortem report generation."
         }
       }
     }
