@@ -1,0 +1,32 @@
+# Source and config (compiled output is in out/)
+src/**
+tsconfig.json
+.vscode/**
+
+# Dev and build
+node_modules/**
+.vscode-test/**
+**/*.ts
+!out/**/*.js
+
+# Documentation and design (not needed at runtime)
+SKILLS.md
+DESIGN.md
+COMMANDS.md
+CHANGELOG.md
+CONTRIBUTING.md
+mockups/**
+
+# Foundry / SigNoz deployment
+casting.yaml
+casting.yaml.lock
+pours/**
+
+# Agent reports (user-generated, not part of the extension)
+.agent-reports/**
+
+# Misc
+.git/**
+.gitignore
+.DS_Store
+*.vsix

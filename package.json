@@ -1,16 +1,34 @@
 {
   "name": "stuck",
-  "displayName": "stuck",
-  "description": "Traces AI coding agent activity and sends it to SigNoz",
+  "displayName": "Stuck — AI Agent Observability",
+  "description": "Traces AI coding agent activity (file edits, terminal commands, git commits, agent tool calls) as OpenTelemetry spans, sends them to a local SigNoz instance, and generates postmortem reports when sessions end.",
   "version": "0.1.0",
+  "publisher": "ksploitx",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ksploitx/stuck.git"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "observability",
+    "opentelemetry",
+    "signoz",
+    "tracing",
+    "postmortem",
+    "antigravity"
+  ],
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
+    "Visualization",
+    "Debuggers",
     "Other"
   ],
   "activationEvents": [
-    "*"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {

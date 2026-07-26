@@ -108,3 +108,31 @@
 ### Next
 
 - Phase 5 (if planned) would add real-time session title inference, trace waterfall visualization inside the postmortem panel, and dashboard embedding from SigNoz.
+
+## [Phase 5] - Packaging & Submission Prep
+
+### Added
+
+- Complete README.md rewrite: what stuck does, the problem it solves, honest cross-IDE feature matrix, setup with foundryctl + casting.yaml, full config table, usage walkthrough, and known limitations
+- `.vscodeignore` to exclude dev-only files (src/, mockups/, SKILLS.md, DESIGN.md, pours/, casting files) from the packaged .vsix
+- `CONTRIBUTING.md` with dev setup, coding conventions, and contribution workflow
+- Updated `package.json` manifest: displayName, expanded description, `ksploitx` publisher, `MIT` license, repository URL, keywords (ai, agent, observability, opentelemetry, signoz, tracing, postmortem, antigravity), categories (Visualization, Debuggers, Other), `onStartupFinished` activation event (replaced wildcard `*`)
+- Fixed `.gitignore` to track `casting.yaml`, `casting.yaml.lock`, and `COMMANDS.md` (Foundry competition requirement: judges re-run foundryctl against these files)
+
+### Changed
+
+- `activationEvents` from `"*"` to `"onStartupFinished"` — defers activation until the editor is fully loaded, improving startup performance
+
+### Verify
+
+1. Run `npm run compile` — builds with zero errors.
+2. Read `README.md` — should have complete setup instructions, honest feature matrix, config table, usage walkthrough, and known limitations.
+3. Check `.vscodeignore` exists and lists `src/**`, `mockups/**`, `SKILLS.md`, `DESIGN.md`, `casting.yaml`, `pours/**`.
+4. Check `package.json` has `publisher`, `license`, `repository`, `keywords`, and `categories` fields.
+5. Check `.gitignore` does NOT contain `casting.yaml` or `casting.yaml.lock`.
+6. Run `npx @vscode/vsce ls` to preview what files would be included in the packaged extension.
+
+### Next
+
+- Ready for submission. Package with `npx @vscode/vsce package` and submit the .vsix along with the repo.
+
