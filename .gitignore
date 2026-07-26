@@ -7,3 +7,4 @@ casting.yaml
 pours/
 casting.yaml.lock
 COMMANDS.md
+.agent-reports/

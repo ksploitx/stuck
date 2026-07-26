@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stuck — Postmortem Report Mockup</title>
+  <style>
+    /* ── Design Tokens (from DESIGN.md) ───────────────────────── */
+    :root {
+      --bg-primary:      #1a1a2e;
+      --bg-secondary:    #16213e;
+      --bg-tertiary:     #0f3460;
+      --bg-surface:      #1e1e3a;
+      --text-primary:    #e0e0e0;
+      --text-secondary:  #a0a0b8;
+      --text-muted:      #6c6c8a;
+      --text-inverse:    #1a1a2e;
+      --status-success:  #4ade80;
+      --status-warning:  #fbbf24;
+      --status-error:    #f87171;
+      --accent-primary:  #7c3aed;
+      --accent-hover:    #6d28d9;
+      --accent-link:     #818cf8;
+      --phase-planning:  #818cf8;
+      --phase-editing:   #4ade80;
+      --phase-commands:  #fbbf24;
+      --phase-waiting:   #6c6c8a;
+      --border-subtle:   #2a2a4a;
+      --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+      --radius-s: 4px; --radius-m: 6px; --radius-l: 8px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* ── Reset ────────────────────────────────────────────────── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: var(--sp-4);
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    .report-header {
+      margin-bottom: var(--sp-5);
+    }
+    .report-header .badge-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      margin-bottom: var(--sp-2);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-1);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--radius-s);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .status-badge.success {
+      background: rgba(74, 222, 128, 0.15);
+      color: var(--status-success);
+    }
+    .status-badge.error {
+      background: rgba(248, 113, 113, 0.15);
+      color: var(--status-error);
+    }
+    .status-badge.warning {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--status-warning);
+    }
+    .report-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+      margin-bottom: var(--sp-1);
+    }
+    .report-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .report-meta span + span::before {
+      content: ' · ';
+    }
+
+    /* ── Section ───────────────────────────────────────────────── */
+    .section {
+      margin-bottom: var(--sp-5);
+    }
+    .section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--sp-3);
+      padding-bottom: var(--sp-1);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .section p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: var(--sp-2);
+    }
+
+    /* ── Attempted Actions List ────────────────────────────────── */
+    .action-list {
+      list-style: none;
+    }
+    .action-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-2);
+      padding: var(--sp-1) 0;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    .action-list li::before {
+      content: '→';
+      color: var(--text-muted);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .action-list .action-tag {
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--accent-link);
+      background: rgba(129, 140, 248, 0.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* ── Time Breakdown ────────────────────────────────────────── */
+    .time-bar-container {
+      margin-bottom: var(--sp-3);
+    }
+    .time-bar {
+      display: flex;
+      height: 8px;
+      border-radius: var(--radius-s);
+      overflow: hidden;
+      background: var(--bg-surface);
+      margin-bottom: var(--sp-2);
+    }
+    .time-bar .segment {
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    .time-bar .segment.planning { background: var(--phase-planning); }
+    .time-bar .segment.editing  { background: var(--phase-editing); }
+    .time-bar .segment.commands { background: var(--phase-commands); }
+    .time-bar .segment.waiting  { background: var(--phase-waiting); }
+
+    .time-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-3);
+    }
+    .time-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-1);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .time-legend-item .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .time-legend-item .dot.planning { background: var(--phase-planning); }
+    .time-legend-item .dot.editing  { background: var(--phase-editing); }
+    .time-legend-item .dot.commands { background: var(--phase-commands); }
+    .time-legend-item .dot.waiting  { background: var(--phase-waiting); }
+
+    /* ── Root Cause Card ───────────────────────────────────────── */
+    .root-cause-card {
+      background: rgba(248, 113, 113, 0.08);
+      border-left: 3px solid var(--status-error);
+      padding: var(--sp-3);
+      border-radius: var(--radius-m);
+      margin-bottom: var(--sp-5);
+    }
+    .root-cause-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--status-error);
+      margin-bottom: var(--sp-2);
+    }
+    .root-cause-card p {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* ── Retries Section ───────────────────────────────────────── */
+    .retry-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--sp-2);
+      background: var(--bg-secondary);
+      border-radius: var(--radius-s);
+      margin-bottom: var(--sp-1);
+    }
+    .retry-item .target {
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+    .retry-item .count {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--status-warning);
+      background: rgba(251, 191, 36, 0.15);
+      padding: 2px 8px;
+      border-radius: var(--radius-s);
+    }
+
+    /* ── Footer Button ─────────────────────────────────────────── */
+    .report-footer {
+      margin-top: var(--sp-6);
+      padding-top: var(--sp-4);
+      border-top: 1px solid var(--border-subtle);
+    }
+    .signoz-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-2);
+      width: 100%;
+      padding: var(--sp-2) var(--sp-4);
+      background: var(--accent-primary);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-m);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      text-decoration: none;
+    }
+    .signoz-button:hover {
+      background: var(--accent-hover);
+    }
+    .signoz-button.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .signoz-button .icon {
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Report Header ──────────────────────────────────────── -->
+  <div class="report-header">
+    <div class="badge-row">
+      <span class="status-badge error">✗ Failed</span>
+    </div>
+    <h1 class="report-title">Add pagination to /api/users</h1>
+    <div class="report-meta">
+      <span>July 26, 2026 · 11:02 AM</span>
+      <span>14m 05s</span>
+      <span>87 spans</span>
+    </div>
+  </div>
+
+  <!-- ── Attempted Section ──────────────────────────────────── -->
+  <div class="section">
+    <h2>What Was Attempted</h2>
+    <ul class="action-list">
+      <li>Tool call: <span class="action-tag">code_edit</span> on <span class="action-tag">userController.ts</span></li>
+      <li>Ran terminal command: <span class="action-tag">npm run build</span></li>
+      <li>Tool call: <span class="action-tag">code_edit</span> on <span class="action-tag">userController.ts</span></li>
+      <li>Ran terminal command: <span class="action-tag">npm run build</span></li>
+      <li>Tool call: <span class="action-tag">search</span> for pagination patterns</li>
+      <li>Tool call: <span class="action-tag">code_edit</span> on <span class="action-tag">userController.ts</span></li>
+      <li>Ran terminal command: <span class="action-tag">npm run build</span></li>
+      <li>Saved file: <span class="action-tag">userRoutes.ts</span></li>
+    </ul>
+  </div>
+
+  <!-- ── Time Breakdown ──────────────────────────────────────── -->
+  <div class="section">
+    <h2>Time Breakdown</h2>
+    <div class="time-bar-container">
+      <div class="time-bar">
+        <div class="segment planning" style="width: 35%"></div>
+        <div class="segment editing" style="width: 25%"></div>
+        <div class="segment commands" style="width: 22%"></div>
+        <div class="segment waiting" style="width: 18%"></div>
+      </div>
+      <div class="time-legend">
+        <span class="time-legend-item"><span class="dot planning"></span> Planning 35%</span>
+        <span class="time-legend-item"><span class="dot editing"></span> Editing 25%</span>
+        <span class="time-legend-item"><span class="dot commands"></span> Commands 22%</span>
+        <span class="time-legend-item"><span class="dot waiting"></span> Waiting 18%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Root Cause Card (only for failed sessions) ─────────── -->
+  <div class="root-cause-card">
+    <h3>⚠ Root Cause Hypothesis</h3>
+    <p>
+      The agent repeatedly edited <code>userController.ts</code> and ran the build command
+      in a loop. Each edit introduced a new type error because the pagination cursor type
+      was incompatible with the existing query builder interface. The agent lacked context
+      about the custom <code>QueryBuilder&lt;T&gt;</code> generic constraint, causing it to
+      retry the same approach with minor variations.
+    </p>
+  </div>
+
+  <!-- ── Retries Section ─────────────────────────────────────── -->
+  <div class="section">
+    <h2>Retries</h2>
+    <div class="retry-item">
+      <span class="target">userController.ts</span>
+      <span class="count">⟳ 5×</span>
+    </div>
+    <div class="retry-item">
+      <span class="target">npm run build</span>
+      <span class="count">⟳ 4×</span>
+    </div>
+  </div>
+
+  <!-- ── Recommendations ──────────────────────────────────────── -->
+  <div class="section">
+    <h2>Recommendations</h2>
+    <p>
+      Consider adding a type-safe pagination helper module that wraps the QueryBuilder
+      generic. This would give the agent a clear API surface to target instead of
+      guessing at the internal type constraints. Breaking the controller into smaller
+      functions would also reduce the surface area for conflicting edits.
+    </p>
+  </div>
+
+  <!-- ── Footer ───────────────────────────────────────────────── -->
+  <div class="report-footer">
+    <a href="http://localhost:3301/trace/abc123def456" class="signoz-button">
+      <span class="icon">↗</span>
+      View Trace in SigNoz
+    </a>
+  </div>
+
+</body>
+</html>
