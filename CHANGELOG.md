@@ -75,3 +75,36 @@
 ### Next
 
 - Phase 4 will introduce the interactive webview rendering for the agent panel (implementing the HTML mockups), replacing raw markdown files with a rich UI.
+
+## [Phase 4] - Webview UI & Final Polish
+
+### Added
+
+- `DESIGN.md` — visual design system (color palette, typography, spacing, component specs)
+- `mockups/session-list.html` — target HTML mockup for the sidebar session list
+- `mockups/postmortem-report.html` — target HTML mockup for the postmortem report viewer
+- `src/webview/sessionListProvider.ts` — sidebar `WebviewViewProvider` that reads `.agent-reports/` and live session state, renders grouped session list (Active / Recent / Yesterday / Earlier) with status dots, duration, retry badges
+- `src/webview/postmortemPanel.ts` — full-panel `WebviewPanel` that parses postmortem `.md` files into structured view: header with status badge, attempted actions list, time breakdown bar with color legend, root cause card (failure only), retries section, recommendations, and "View in SigNoz" deep-link button
+- Activity bar icon and `stuck-sessions` sidebar view via `package.json` views/viewsContainers
+- `stuck.openPostmortem` and `stuck.refreshSessions` commands
+- Retry-loop in-editor notification: `vscode.window.showWarningMessage()` fires when CDP detects 3+ retries on the same target — active notification, not just a sidebar dot
+- `pours/deployment/alerts/retry-threshold-alert.yml` — SigNoz alert rule (YAML, no extension code) that fires when any session exceeds 5 retries
+- `postmortem.ts` exports: `isPostmortemGenerating()`, `onPostmortemGenerated()`, `parseReportFile()` for webview consumption
+- Empty state, loading state (spinner + pulse animation), and SigNoz-unreachable graceful degradation (button disabled with tooltip)
+- CSP-safe webview rendering with nonce-based inline styles and scripts
+
+### Verify
+
+1. Run `npm run compile` — should build with zero errors.
+2. Press F5 to launch Extension Development Host.
+3. Check the activity bar for the "Stuck" icon (pulse icon) → clicking it opens the sidebar.
+4. **Empty state:** If no `.agent-reports/` folder exists, sidebar shows "No sessions yet" with a friendly message.
+5. Create a dummy `.agent-reports/postmortem-2026-07-26T12-00-00-abcd1234.md` file with valid YAML frontmatter (`trace_id`, `generated_at`) → use `Stuck: Refresh Sessions` command → session appears in the sidebar with correct status dot and metadata.
+6. Click the session → postmortem panel opens with structured report view (header, time bar, retries, etc.).
+7. Check the "View in SigNoz" button URL is correctly formed as `http://localhost:3301/trace/{traceId}`. If SigNoz is not running, button appears disabled.
+8. **Retry alert:** With CDP enabled (Antigravity + `--remote-debugging-port=9000`), trigger a retry loop (same file 3+ times) → warning notification appears in the editor.
+9. Verify `pours/deployment/alerts/retry-threshold-alert.yml` is valid YAML: `cat pours/deployment/alerts/retry-threshold-alert.yml | head -20`.
+
+### Next
+
+- Phase 5 (if planned) would add real-time session title inference, trace waterfall visualization inside the postmortem panel, and dashboard embedding from SigNoz.

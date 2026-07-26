@@ -69,6 +69,44 @@
           "description": "Ollama model name for postmortem report generation."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "stuck-sidebar",
+          "title": "Stuck",
+          "icon": "$(pulse)"
+        }
+      ]
+    },
+    "views": {
+      "stuck-sidebar": [
+        {
+          "type": "webview",
+          "id": "stuck-sessions",
+          "name": "Sessions"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "stuck.openPostmortem",
+        "title": "Stuck: Open Postmortem Report"
+      },
+      {
+        "command": "stuck.refreshSessions",
+        "title": "Stuck: Refresh Sessions",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "stuck.refreshSessions",
+          "when": "view == stuck-sessions",
+          "group": "navigation"
+        }
+      ]
     }
   },
   "scripts": {

@@ -275,6 +275,15 @@ function setupNetworkListeners(client: CDP.Client): void {
         const toolInfo = inferToolCall(url, method, postData);
         if (toolInfo) {
             const isLoop = recordTarget(toolInfo.target);
+            const retryCount = getTargetCount(toolInfo.target);
+
+            // ── Retry-loop in-editor alert ──
+            if (isLoop) {
+                vscode.window.showWarningMessage(
+                    `Stuck: Retry loop detected — "${toolInfo.target}" has been attempted ${retryCount} times`,
+                    'Dismiss',
+                );
+            }
 
             const span = startSpan('cdp_tool_call', {
                 'cdp.event_type': 'tool_call',
@@ -283,7 +292,7 @@ function setupNetworkListeners(client: CDP.Client): void {
                 'cdp.request_url': url,
                 'cdp.request_method': method,
                 'cdp.retry_loop': isLoop,
-                'cdp.retry_count': getTargetCount(toolInfo.target),
+                'cdp.retry_count': retryCount,
                 'cdp.inference_quality': toolInfo.confidence,
             });
             if (span) {

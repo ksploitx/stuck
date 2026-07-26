@@ -69,6 +69,9 @@ let outputChannel: vscode.OutputChannel | undefined;
 let isGenerating = false;
 let hasReceivedSpans = false;
 
+/** External callback fired when a postmortem report is generated */
+let postmortemGeneratedCallback: ((reportPath: string, traceId: string) => void) | undefined;
+
 // ─── Public API ───────────────────────────────────────────────────────
 
 /**
@@ -100,6 +103,194 @@ export function activatePostmortem(context: vscode.ExtensionContext): void {
     });
 
     log('Postmortem engine activated');
+}
+
+/**
+ * Whether a postmortem is currently being generated.
+ * Used by the sidebar webview to show a loading state.
+ */
+export function isPostmortemGenerating(): boolean {
+    return isGenerating;
+}
+
+/**
+ * Register a callback that fires when a postmortem report is generated.
+ * Receives the relative path to the report file and the trace ID.
+ */
+export function onPostmortemGenerated(callback: (reportPath: string, traceId: string) => void): void {
+    postmortemGeneratedCallback = callback;
+}
+
+/**
+ * Parsed postmortem report structure for the webview panel.
+ */
+export interface ParsedReport {
+    traceId: string;
+    generatedAt: string;
+    title: string;
+    status: 'success' | 'error' | 'warning';
+    summary: string;
+    attemptedActions: string[];
+    phases: { planning: number; editing: number; commands: number; waiting: number };
+    totalDurationMs: number;
+    rootCause: string | null;
+    retries: Array<{ target: string; count: number }>;
+    recommendations: string;
+    rawMarkdown: string;
+}
+
+/**
+ * Parse a postmortem .md file into a structured object for the webview.
+ */
+export function parseReportFile(content: string): ParsedReport {
+    // Extract YAML frontmatter
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
+    let traceId = '';
+    let generatedAt = '';
+    if (fmMatch) {
+        const fm = fmMatch[1];
+        const traceMatch = fm.match(/trace_id:\s*(.+)/);
+        const dateMatch = fm.match(/generated_at:\s*(.+)/);
+        if (traceMatch) { traceId = traceMatch[1].trim(); }
+        if (dateMatch) { generatedAt = dateMatch[1].trim(); }
+    }
+
+    const body = fmMatch ? content.slice(fmMatch[0].length) : content;
+
+    // Determine status from content heuristics
+    const lowerBody = body.toLowerCase();
+    let status: 'success' | 'error' | 'warning' = 'success';
+    if (lowerBody.includes('failed') || lowerBody.includes('error') || lowerBody.includes('root cause')) {
+        status = 'error';
+    } else if (lowerBody.includes('retry') || lowerBody.includes('warning')) {
+        status = 'warning';
+    }
+
+    // Extract title (first H1 or first significant line)
+    const titleMatch = body.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : 'Agent Session Postmortem';
+
+    // Extract sections by heading
+    const sections = extractSections(body);
+
+    // Parse attempted actions
+    const attemptedActions = extractListItems(sections['what was attempted'] ?? sections['actions attempted'] ?? '');
+
+    // Parse time breakdown
+    const phases = parsePhases(sections['time breakdown'] ?? sections['time analysis'] ?? '');
+
+    // Parse total duration from summary or metadata
+    const durationMatch = body.match(/(\d+)m\s*(\d+)s/);
+    const totalDurationMs = durationMatch
+        ? (parseInt(durationMatch[1]) * 60 + parseInt(durationMatch[2])) * 1000
+        : 0;
+
+    // Parse root cause
+    const rootCauseSection = sections['root cause hypothesis'] ?? sections['root cause'] ?? null;
+    const rootCause = rootCauseSection ? rootCauseSection.replace(/^#+.*$/gm, '').trim() : null;
+
+    // Parse retries
+    const retries = parseRetries(sections['retry analysis'] ?? sections['retry loops'] ?? sections['retries'] ?? '');
+
+    // Recommendations
+    const recommendations = (sections['recommendations'] ?? '').replace(/^#+.*$/gm, '').trim();
+
+    // Summary
+    const summary = (sections['summary'] ?? '').replace(/^#+.*$/gm, '').trim();
+
+    return {
+        traceId,
+        generatedAt,
+        title,
+        status,
+        summary,
+        attemptedActions,
+        phases,
+        totalDurationMs,
+        rootCause: (rootCause && rootCause.length > 0) ? rootCause : null,
+        retries,
+        recommendations,
+        rawMarkdown: body,
+    };
+}
+
+function extractSections(markdown: string): Record<string, string> {
+    const sections: Record<string, string> = {};
+    const regex = /^##\s+(.+)$/gm;
+    let match: RegExpExecArray | null;
+    const headings: Array<{ title: string; start: number }> = [];
+
+    while ((match = regex.exec(markdown)) !== null) {
+        headings.push({ title: match[1].trim().toLowerCase(), start: match.index + match[0].length });
+    }
+
+    for (let i = 0; i < headings.length; i++) {
+        const end = i + 1 < headings.length
+            ? markdown.lastIndexOf('\n##', headings[i + 1].start - 3)
+            : markdown.length;
+        sections[headings[i].title] = markdown.slice(headings[i].start, end).trim();
+    }
+
+    return sections;
+}
+
+function extractListItems(section: string): string[] {
+    const items: string[] = [];
+    const lines = section.split('\n');
+    for (const line of lines) {
+        const match = line.match(/^\s*[-*]\s+(.+)/);
+        if (match) {
+            items.push(match[1].trim());
+        }
+    }
+    return items;
+}
+
+function parsePhases(section: string): { planning: number; editing: number; commands: number; waiting: number } {
+    const phases = { planning: 0, editing: 0, commands: 0, waiting: 0 };
+
+    const planMatch = section.match(/planning[^|]*?\|\s*([\d.]+(?:ms|s|m))/i)
+        ?? section.match(/planning[^:]*:\s*([\d.]+(?:ms|s|m\s*\d+s)?)/i);
+    const editMatch = section.match(/editing[^|]*?\|\s*([\d.]+(?:ms|s|m))/i)
+        ?? section.match(/editing[^:]*:\s*([\d.]+(?:ms|s|m\s*\d+s)?)/i);
+    const cmdMatch = section.match(/commands?[^|]*?\|\s*([\d.]+(?:ms|s|m))/i)
+        ?? section.match(/commands?[^:]*:\s*([\d.]+(?:ms|s|m\s*\d+s)?)/i);
+    const waitMatch = section.match(/waiting[^|]*?\|\s*([\d.]+(?:ms|s|m))/i)
+        ?? section.match(/waiting[^:]*:\s*([\d.]+(?:ms|s|m\s*\d+s)?)/i);
+
+    if (planMatch) { phases.planning = parseDurationString(planMatch[1]); }
+    if (editMatch) { phases.editing = parseDurationString(editMatch[1]); }
+    if (cmdMatch) { phases.commands = parseDurationString(cmdMatch[1]); }
+    if (waitMatch) { phases.waiting = parseDurationString(waitMatch[1]); }
+
+    return phases;
+}
+
+function parseDurationString(str: string): number {
+    const mMatch = str.match(/(\d+)m/);
+    const sMatch = str.match(/(\d+(?:\.\d+)?)s/);
+    const msMatch = str.match(/(\d+)ms/);
+    let ms = 0;
+    if (msMatch) { ms += parseInt(msMatch[1]); }
+    else {
+        if (mMatch) { ms += parseInt(mMatch[1]) * 60000; }
+        if (sMatch) { ms += parseFloat(sMatch[1]) * 1000; }
+    }
+    return ms;
+}
+
+function parseRetries(section: string): Array<{ target: string; count: number }> {
+    const retries: Array<{ target: string; count: number }> = [];
+    const lines = section.split('\n');
+    for (const line of lines) {
+        // Matches: `- target — 5 occurrences` or `- target (5 times)`
+        const match = line.match(/[-*]\s+`?([^`—(]+)`?\s*[—(]\s*(\d+)/)
+            ?? line.match(/[-*]\s+(.+?)\s*:\s*(\d+)/);
+        if (match) {
+            retries.push({ target: match[1].trim(), count: parseInt(match[2]) });
+        }
+    }
+    return retries;
 }
 
 // ─── Session-End Detection ────────────────────────────────────────────
@@ -173,6 +364,11 @@ async function triggerPostmortem(
         vscode.window.showInformationMessage(
             `Stuck: Postmortem report generated → .agent-reports/`,
         );
+
+        // Notify webview sidebar to refresh
+        if (postmortemGeneratedCallback) {
+            postmortemGeneratedCallback(reportPath, traceId);
+        }
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         log(`Error generating postmortem: ${msg}`);

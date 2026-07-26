@@ -4,9 +4,9 @@ This file defines how Cursor should behave while building this project. Read it 
 
 ## What this project is
 
-"stuck" is a VS Code-API extension that runs unmodified on Antigravity, Cursor, and VS Code. It traces AI coding agent activity (file edits, terminal commands, git diffs, and Antigravity's agent panel via CDP) as OpenTelemetry spans sent to a self-hosted SigNoz instance. When a task finishes or fails, it generates an AI postmortem report summarizing what happened.
+"stuck" is a VS Code-API extension that runs unmodified on Antigravity, Cursor, and VS Code. It traces AI coding agent activity (file edits, terminal commands, git diffs, and Antigravity's agent panel via CDP) as OpenTelemetry spans sent to a self-hosted SigNoz instance. When a task finishes or fails, it generates an AI postmortem report summarizing what happened. Reports are viewable in a rich sidebar webview (session list) and a full-panel postmortem viewer.
 
-Design system reference: `DESIGN.md` in this repo is the source of truth for all UI colors, typography, spacing, and component style. The two HTML mockups (`session-list.html`, `postmortem-report.html`) show the target look for the sidebar webview. Match them, don't reinvent the visual language.
+Design system reference: `DESIGN.md` in this repo is the source of truth for all UI colors, typography, spacing, and component style. The two HTML mockups (`mockups/session-list.html`, `mockups/postmortem-report.html`) show the target look for the sidebar webview. The webview implementation in `src/webview/` adapts these mockups into live VS Code webview panels. Match them, don't reinvent the visual language.
 
 ## Hard rules for every phase
 
@@ -52,7 +52,7 @@ Append, never rewrite earlier entries.
 ## Coding conventions
 
 - TypeScript throughout, strict mode on.
-- Extension code lives under `src/`, one file per concern (`fileWatcher.ts`, `terminalWatcher.ts`, `gitWatcher.ts`, `cdpBridge.ts`, `otelEmitter.ts`, `postmortem.ts`, `webview/`).
+- Extension code lives under `src/`, one file per concern (`fileWatcher.ts`, `terminalWatcher.ts`, `gitWatcher.ts`, `cdpBridge.ts`, `otelEmitter.ts`, `postmortem.ts`, `webview/sessionListProvider.ts`, `webview/postmortemPanel.ts`).
 - OTel spans go through a single shared emitter module — don't instantiate the OTel SDK in more than one place.
 - Keep IDE-specific code (the Antigravity CDP bridge) isolated in its own file behind a feature check, so Cursor/VS Code builds don't break if CDP isn't reachable.
 - No secrets or API keys hardcoded. Read from VS Code extension settings/config.
