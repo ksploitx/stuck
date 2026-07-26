@@ -36,7 +36,18 @@ let reconnectAttempts = 0;
 /** Reconnect timer handle */
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
+/** External callback fired when a task-end signal is detected via CDP */
+let taskEndCallback: ((message: string) => void) | undefined;
+
 // ─── Public API ───────────────────────────────────────────────────────
+
+/**
+ * Register a callback that fires when CDP detects a task-end signal.
+ * Used by the postmortem engine to trigger report generation.
+ */
+export function onTaskEnd(callback: (message: string) => void): void {
+    taskEndCallback = callback;
+}
 
 /**
  * Attempt to connect to Antigravity's CDP endpoint. Fails gracefully
@@ -329,6 +340,10 @@ function setupRuntimeListeners(client: CDP.Client): void {
         if (taskSignal) {
             if (taskSignal === 'task_end') {
                 resetLoopDetector();
+                // Notify the postmortem engine
+                if (taskEndCallback) {
+                    taskEndCallback(message);
+                }
             }
 
             const span = startSpan('cdp_task_signal', {
