@@ -1,0 +1,9 @@
+node_modules/
+out/
+.vscode-test/
+*.vsix
+casting.yaml
+.DS_Store
+pours/
+casting.yaml.lock
+COMMANDS.md
