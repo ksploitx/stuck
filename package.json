@@ -21,6 +21,16 @@
           "type": "string",
           "default": "http://localhost:4318",
           "description": "The OTLP HTTP endpoint URL to send telemetry data to."
+        },
+        "stuck.cdpPort": {
+          "type": "number",
+          "default": 9000,
+          "description": "CDP remote debugging port for Antigravity agent panel."
+        },
+        "stuck.cdpEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable CDP bridge for Antigravity-specific agent instrumentation. Disable on Cursor or plain VS Code."
         }
       }
     }
@@ -34,13 +44,15 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.80.0",
+    "@types/chrome-remote-interface": "^0.34.0",
     "@types/node": "^18.x",
+    "@types/vscode": "^1.80.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.55.0",
     "@opentelemetry/sdk-node": "^0.55.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.55.0"
+    "chrome-remote-interface": "^0.34.0"
   }
 }

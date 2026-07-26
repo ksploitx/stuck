@@ -42,6 +42,14 @@ export function initOtel(context: vscode.ExtensionContext) {
     }
 }
 
+/**
+ * Returns the shared tracer instance, or undefined if OTel hasn't been initialized.
+ * Used by cdpBridge to create spans without duplicating the SDK.
+ */
+export function getTracer(): Tracer | undefined {
+    return tracer;
+}
+
 export function startSpan(name: string, attributes?: Record<string, string | number | boolean>): Span | undefined {
     if (!tracer) {
         return undefined;

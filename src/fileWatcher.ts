@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { startSpan } from './otelEmitter';
+import { startSpan } from './otelEmitter.js';
 
 const previousSizes = new Map<string, number>();
 

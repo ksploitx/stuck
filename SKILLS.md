@@ -61,3 +61,5 @@ Append, never rewrite earlier entries.
 
 - SigNoz runs locally via `foundryctl`, OTLP endpoint defaults to `http://localhost:4318`. Assume it's already running unless a phase says to set it up.
 - No SigNoz cloud, no external accounts, everything local.
+- CDP bridge (`cdpBridge.ts`) connects to Antigravity's remote debugging port, default `localhost:9000` (configurable via `stuck.cdpPort`). This is the Antigravity-specific piece — there's no official agent API, so tool calls are inferred from Network requests and Runtime console output via CDP heuristics. Each span carries a `cdp.inference_quality` attribute (high/medium/low) so you can filter by reliability in SigNoz.
+- Launch Antigravity with `--remote-debugging-port=9000` to enable CDP access. On Cursor/plain VS Code the bridge silently skips.

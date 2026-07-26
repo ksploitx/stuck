@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { startSpan } from './otelEmitter';
+import { startSpan } from './otelEmitter.js';
 import * as cp from 'child_process';
 
 export async function activateGitWatcher(context: vscode.ExtensionContext) {

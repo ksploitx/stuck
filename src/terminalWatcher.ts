@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { startSpan } from './otelEmitter';
+import { startSpan } from './otelEmitter.js';
 
 export function activateTerminalWatcher(context: vscode.ExtensionContext) {
     if (vscode.window.onDidEndTerminalShellExecution) {
