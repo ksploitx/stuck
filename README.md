@@ -125,8 +125,13 @@ All settings are under **Settings → Extensions → Stuck**:
 | `stuck.otlpEndpoint` | `http://localhost:4318` | OTLP HTTP endpoint for SigNoz |
 | `stuck.cdpPort` | `9000` | CDP remote debugging port (Antigravity) |
 | `stuck.cdpEnabled` | `true` | Enable/disable CDP bridge |
+| `stuck.idleTimeoutMinutes` | `5` | Minutes of inactivity before triggering a postmortem report |
+| `stuck.signozQueryEndpoint` | `http://localhost:3301` | SigNoz query-service API endpoint |
 | `stuck.llmProvider` | `ollama` | LLM for reports (`ollama`, `anthropic`, `openai`) |
+| `stuck.anthropicApiKey` | `""` | Anthropic API key for postmortem report generation |
+| `stuck.openaiApiKey` | `""` | OpenAI API key for postmortem report generation |
 | `stuck.ollamaEndpoint`| `http://localhost:11434`| Ollama API endpoint |
+| `stuck.ollamaModel` | `llama3` | Ollama model name for postmortem report generation |
 
 *(See package.json for full configuration options including API keys and timeouts).*
 
