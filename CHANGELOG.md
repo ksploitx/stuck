@@ -59,7 +59,7 @@
 - SigNoz trace querying via `GET /api/v1/traces/{traceId}` to fetch full session history
 - Structured summary builder analyzing time spent (planning/editing/commands/waiting) and retry counts
 - AI report generation via configurable LLM provider (Anthropic, OpenAI, Ollama fallback)
-- Configuration settings for LLM providers (`stuck.llmProvider`, `stuck.anthropicApiKey`, `stuck.openaiApiKey`, `stuck.ollamaEndpoint`)
+- Configuration settings for LLM providers (`stuck.llmProvider`, `stuck.anthropicApiKey`, `stuck.openaiApiKey`, `stuck.ollamaEndpoint`, `stuck.ollamaModel`)
 - Configuration for timeouts and query endpoints (`stuck.idleTimeoutMinutes`, `stuck.signozQueryEndpoint`)
 - Dual output: saves reports to `.agent-reports/*.md` in the workspace and pushes back to SigNoz as a log event
 
