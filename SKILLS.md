@@ -65,4 +65,3 @@ Append, never rewrite earlier entries.
 - Launch Antigravity with `--remote-debugging-port=9000` to enable CDP access. On Cursor/plain VS Code the bridge silently skips.
 - SigNoz exposes two relevant endpoints: the OTLP ingest endpoint (`localhost:4318`) for sending spans/logs, and the query-service API (`localhost:3301`) for reading traces back. The postmortem engine queries `GET /api/v1/traces/{traceId}` on port 3301. Both are configurable via `stuck.otlpEndpoint` and `stuck.signozQueryEndpoint`.
 - The postmortem engine uses a configurable LLM (Anthropic, OpenAI, or Ollama) for report generation. Default is Ollama (`localhost:11434`, model: `llama3`) so it works locally without API keys. If no LLM is reachable, it produces a structured-but-unnarrated fallback report.
-

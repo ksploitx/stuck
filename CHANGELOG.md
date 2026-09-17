@@ -135,4 +135,3 @@
 ### Next
 
 - Ready for submission. Package with `npx @vscode/vsce package` and submit the .vsix along with the repo.
-
